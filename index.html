@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Absa Receipt Forge</title>
+<style>
+  :root {
+    --red: #dc241f;
+    --ink: #000;
+    --paper: #fff;
+    --panel: #f4f5f7;
+    --border: #111;
+    --muted: #6b7280;
+    --tab-h: 56px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e9ecef;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+    min-height: 100dvh;
+  }
+
+  /* ===== TOP HEADER ===== */
+  .top-bar {
+    background: var(--red);
+    color: #fff;
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .top-bar h1 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: .03em; }
+  .top-bar small { font-size: 11px; opacity: .8; }
+
+  /* ===== TAB NAV (mobile) ===== */
+  .tab-nav {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #fff;
+    border-bottom: 2px solid #e0e0e0;
+  }
+  .tab-nav button {
+    flex: 1;
+    padding: 14px 0;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-nav button.active {
+    color: var(--red);
+    border-bottom-color: var(--red);
+  }
+
+  /* ===== DESKTOP LAYOUT ===== */
+  .app {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 24px;
+    padding: 20px 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ===== MOBILE ===== */
+  @media (max-width: 760px) {
+    .top-bar { padding: 12px 14px 8px; }
+    .tab-nav { display: flex; }
+    .app {
+      display: block;
+      padding: 0;
+      gap: 0;
+    }
+    .form-panel {
+      display: none;
+      position: static !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding-bottom: 20px;
+    }
+    .receipt-wrap {
+      display: none;
+      padding: 16px 12px 24px;
+    }
+    .form-panel.tab-active,
+    .receipt-wrap.tab-active { display: block; }
+    .receipt {
+      width: 100% !important;
+      max-width: 380px;
+      margin: 0 auto;
+    }
+  }
+
+  /* ===== FORM PANEL ===== */
+  .form-panel {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.06);
+    height: fit-content;
+    position: sticky;
+    top: 16px;
+  }
+  .form-panel h2 {
+    display: none; /* hidden, top-bar replaces it */
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--red);
+    margin: 18px 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #dde;
+  }
+  .form-panel label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+  .form-panel input[type="text"],
+  .form-panel input[type="number"] {
+    width: 100%;
+    padding: 10px 11px;
+    border: 1.5px solid #c6cad2;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #fff;
+    font-family: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .form-panel input:focus {
+    outline: none;
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(220,36,31,.1);
+  }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .denoms-grid {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 6px 10px;
+    align-items: center;
+  }
+  .denoms-grid .head {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: .05em;
+    padding-bottom: 2px;
+    border-bottom: 1px solid #dde;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 13px 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 14px;
+    letter-spacing: .03em;
+    font-family: inherit;
+  }
+  .btn.secondary { background: #1a1a1a; }
+  .btn:active { filter: brightness(.92); }
+
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  /* ===== RECEIPT ===== */
+  .receipt-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .receipt {
+    width: 340px;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 16px 14px 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    line-height: 1.35;
+    box-shadow: 0 8px 28px rgba(0,0,0,.13);
+  }
+  .receipt-head {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .absa-logo { display: inline-block; line-height: 0; }
+  .absa-logo svg { display: block; }
+  .receipt-title {
+    margin-top: 8px;
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: .08em;
+  }
+  .r-section {
+    border: 1.2px solid var(--border);
+    margin-top: 8px;
+  }
+  .r-section-title {
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 4px 7px;
+    border-bottom: 1.2px solid var(--border);
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: 108px 1fr;
+    border-bottom: 1px solid #000;
+  }
+  .kv:last-child { border-bottom: 0; }
+  .kv .k, .kv .v { padding: 3.5px 7px; font-size: 10.5px; }
+  .kv .k { border-right: 1px solid #000; }
+  .kv .v { font-weight: 600; word-break: break-word; }
+
+  .denom-wrap { border: 1.2px solid var(--border); margin-top: 8px; }
+  .denom-head {
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 4px 7px;
+    border-bottom: 1.2px solid var(--border);
+  }
+  .denom-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .denom-table th, .denom-table td {
+    border: 1px solid #000;
+    padding: 3px 7px;
+    text-align: right;
+  }
+  .denom-table th { font-weight: 700; font-size: 10px; text-align: center; }
+  .denom-table td.lbl { text-align: right; }
+  .denom-table .total-row td { font-weight: 700; }
+
+  /* Signature */
+  .sig-box { border: 1.2px solid var(--border); margin-top: 8px; }
+  .sig-label {
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 4px 7px;
+    border-bottom: 1.2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sig-actions { display: flex; gap: 5px; }
+  .sig-actions button {
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1.5px solid;
+  }
+  .btn-clear { color: #c00; border-color: #c00; background: #fff; }
+  .btn-apply { color: #fff; background: var(--red); border-color: var(--red); }
+  .sig-draw-area { position: relative; background: #f7f7f7; cursor: crosshair; }
+  .sig-draw-area canvas {
+    display: block;
+    width: 100%;
+    height: 110px;
+    touch-action: none;
+  }
+  .sig-draw-hint {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #bbb; font-size: 11px; pointer-events: none; letter-spacing: .03em;
+  }
+  .sig-area {
+    height: 110px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; background: #fff;
+  }
+  .sig-area img { max-height: 96px; max-width: 100%; }
+
+  .footer-note {
+    margin-top: 10px;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* ===== PRINT ===== */
+  @media print {
+    @page { size: 72mm auto; margin: 0; }
+    html, body { background: #fff; width: 72mm; margin: 0; padding: 0; }
+    .top-bar, .tab-nav, .form-panel, .no-print,
+    .sig-draw-area, .sig-actions { display: none !important; }
+    .app { display: block; padding: 0; margin: 0; width: 72mm; }
+    .receipt-wrap { display: block !important; margin: 0; padding: 0; }
+    .receipt {
+      width: 72mm; box-shadow: none;
+      padding: 3mm 2.5mm 5mm; margin: 0;
+      font-size: 8.5px; line-height: 1.3;
+    }
+    .receipt-title { font-size: 9px; }
+    .r-section-title, .denom-head, .sig-label { font-size: 8.5px; }
+    .kv { grid-template-columns: 82px 1fr; }
+    .kv .k, .kv .v { font-size: 8.5px; padding: 2.5px 4px; }
+    .denom-table th, .denom-table td { font-size: 8.5px; padding: 2px 4px; }
+    .footer-note { font-size: 8px; }
+    .sig-area { height: 70px; display: flex !important; }
+    .sig-area img { max-height: 62px; }
+    .absa-logo svg { width: 46px !important; height: 46px !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar no-print">
+  <div>
+    <h1>Receipt Forge</h1>
+    <small>Absa Cash Deposit</small>
+  </div>
+</div>
+
+<!-- Mobile tabs -->
+<nav class="tab-nav no-print" id="tabNav">
+  <button class="active" onclick="switchTab('form', this)">Edit Form</button>
+  <button onclick="switchTab('preview', this)">Preview</button>
+</nav>
+
+<div class="app">
+
+  <!-- ======== FORM ======== -->
+  <aside class="form-panel tab-active" id="tab-form">
+
+    <div class="section-label">Account Details</div>
+
+    <label>Date</label>
+    <input type="text" id="f-date" value="2025/11/07 08:54" />
+
+    <label>Account No</label>
+    <input type="text" id="f-acc" value="***4073" />
+
+    <label>Branch No</label>
+    <input type="text" id="f-branch" value="054 AVENUE CENTRAL" />
+
+    <label>Account Name</label>
+    <input type="text" id="f-accname" value="ELTONIA COMPANY LIMITED" />
+
+    <div class="section-label">Transaction Details</div>
+
+    <label>Deposited At</label>
+    <input type="text" id="f-depat" value="054 AVENUE CENTRAL" />
+
+    <div class="row-2">
+      <div>
+        <label>Terminal No</label>
+        <input type="text" id="f-term" value="03" />
+      </div>
+      <div>
+        <label>Teller Name</label>
+        <input type="text" id="f-teller" value="AB034RT" />
+      </div>
+    </div>
+
+    <label>Deposited By</label>
+    <input type="text" id="f-depby" value="HARRIET AMA-ADJIBEA AYIM" />
+
+    <label>Contact</label>
+    <input type="text" id="f-contact" value="0556513376" />
+
+    <label>Batch Ref</label>
+    <input type="text" id="f-batch" value="20251107-054-03-000003" />
+
+    <div class="section-label">Other</div>
+
+    <label>Currency</label>
+    <input type="text" id="f-curr" value="New Cedi" />
+
+    <label>Narration</label>
+    <input type="text" id="f-narr" value="AACEN" />
+
+    <label>Extended Narration</label>
+    <input type="text" id="f-xnarr" value="" />
+
+    <div class="section-label">Denominations</div>
+    <div class="denoms-grid">
+      <div class="head">Denomination</div><div class="head">Count</div>
+      <input type="number" id="d1-v" value="200" step="0.01" inputmode="decimal">
+      <input type="number" id="d1-c" value="1" inputmode="numeric">
+      <input type="number" id="d2-v" value="100" step="0.01" inputmode="decimal">
+      <input type="number" id="d2-c" value="5" inputmode="numeric">
+      <input type="number" id="d3-v" value="50" step="0.01" inputmode="decimal">
+      <input type="number" id="d3-c" value="49" inputmode="numeric">
+      <input type="number" id="d4-v" value="20" step="0.01" inputmode="decimal">
+      <input type="number" id="d4-c" value="1" inputmode="numeric">
+      <input type="number" id="d5-v" value="10" step="0.01" inputmode="decimal">
+      <input type="number" id="d5-c" value="-1" inputmode="numeric">
+    </div>
+    <div class="hint">Totals auto-calculate. Negative count = returned notes.</div>
+
+    <button class="btn" onclick="window.print()">&#128438; Print Receipt</button>
+    <button class="btn secondary" onclick="resetForm()">Reset to Sample</button>
+  </aside>
+
+  <!-- ======== RECEIPT PREVIEW ======== -->
+  <main class="receipt-wrap" id="tab-preview">
+    <div class="receipt" id="receipt">
+
+      <div class="receipt-head">
+        <span class="absa-logo">
+          <svg width="58" height="58" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="60" cy="60" r="58" fill="#dc241f"/>
+            <text x="60" y="76"
+                  text-anchor="middle"
+                  font-family="Arial, Helvetica, sans-serif"
+                  font-weight="900"
+                  font-size="34"
+                  fill="#ffffff"
+                  letter-spacing="-1.5">absa</text>
+          </svg>
+        </span>
+        <div class="receipt-title">TOTAL CASH DEPOSIT</div>
+      </div>
+
+      <div class="r-section">
+        <div class="r-section-title">Details</div>
+        <div class="kv"><div class="k">Date :</div><div class="v" id="r-date"></div></div>
+        <div class="kv"><div class="k">Account No :</div><div class="v" id="r-acc"></div></div>
+        <div class="kv"><div class="k">Branch No :</div><div class="v" id="r-branch"></div></div>
+        <div class="kv"><div class="k">Account Name :</div><div class="v" id="r-accname"></div></div>
+      </div>
+
+      <div class="r-section">
+        <div class="r-section-title">Transaction Details - Cash Deposit</div>
+        <div class="kv"><div class="k">Deposited At :</div><div class="v" id="r-depat"></div></div>
+        <div class="kv"><div class="k">Terminal No :</div><div class="v" id="r-term"></div></div>
+        <div class="kv"><div class="k">Teller Name :</div><div class="v" id="r-teller"></div></div>
+        <div class="kv"><div class="k">Deposited By :</div><div class="v" id="r-depby"></div></div>
+        <div class="kv"><div class="k">Contact :</div><div class="v" id="r-contact"></div></div>
+        <div class="kv"><div class="k">Batch Ref :</div><div class="v" id="r-batch"></div></div>
+      </div>
+
+      <div class="r-section">
+        <div class="kv"><div class="k">Currency :</div><div class="v" id="r-curr"></div></div>
+        <div class="kv"><div class="k">Narration :</div><div class="v" id="r-narr"></div></div>
+        <div class="kv"><div class="k">Extended<br>Narration :</div><div class="v" id="r-xnarr">&nbsp;</div></div>
+      </div>
+
+      <div class="denom-wrap">
+        <div class="denom-head">Denominations</div>
+        <table class="denom-table">
+          <tbody id="r-denoms"></tbody>
+          <tr class="total-row">
+            <td class="lbl" style="text-align:left;font-size:9.5px;">TOTAL CASH DEPOSIT</td>
+            <td></td>
+            <td id="r-total">0.00</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="sig-box">
+        <div class="sig-label">
+          Signature
+          <span class="sig-actions no-print">
+            <button class="btn-clear" onclick="clearSig()">Clear</button>
+            <button class="btn-apply" onclick="applySig()">Apply</button>
+          </span>
+        </div>
+        <div class="sig-draw-area no-print">
+          <canvas id="sigCanvas"></canvas>
+          <div class="sig-draw-hint" id="sigHint">Sign here — finger or mouse</div>
+        </div>
+        <div class="sig-area" id="sigDisplay" style="display:none;">
+          <img id="sigImg" src="" alt="Signature" />
+        </div>
+      </div>
+
+      <div class="footer-note">
+        Customer Signature constitutes<br/>
+        acknowledgement and verification of the<br/>
+        transaction
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  /* ---- Tab switching (mobile) ---- */
+  function switchTab(id, btn) {
+    document.getElementById('tab-form').classList.remove('tab-active');
+    document.getElementById('tab-preview').classList.remove('tab-active');
+    document.getElementById('tab-' + id).classList.add('tab-active');
+    document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (id === 'preview') resizeCanvas();
+  }
+
+  /* ---- Form → Receipt binding ---- */
+  const fields = [
+    ['f-date','r-date'], ['f-acc','r-acc'], ['f-branch','r-branch'],
+    ['f-accname','r-accname'], ['f-depat','r-depat'], ['f-term','r-term'],
+    ['f-teller','r-teller'], ['f-depby','r-depby'], ['f-contact','r-contact'],
+    ['f-batch','r-batch'], ['f-curr','r-curr'], ['f-narr','r-narr'],
+    ['f-xnarr','r-xnarr']
+  ];
+  const denomIds = [
+    ['d1-v','d1-c'], ['d2-v','d2-c'], ['d3-v','d3-c'],
+    ['d4-v','d4-c'], ['d5-v','d5-c']
+  ];
+
+  function fmt(n) {
+    return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function render() {
+    fields.forEach(([f, r]) => {
+      const val = (document.getElementById(f).value ?? '').trim();
+      document.getElementById(r).textContent = val || '\u00A0';
+    });
+    const tbody = document.getElementById('r-denoms');
+    tbody.innerHTML = '';
+    let total = 0;
+    denomIds.forEach(([vId, cId]) => {
+      const v = parseFloat(document.getElementById(vId).value);
+      const c = parseInt(document.getElementById(cId).value, 10);
+      if (isNaN(v) || isNaN(c) || c === 0) return;
+      const line = v * c;
+      total += line;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="lbl">${fmt(v)}</td><td style="text-align:center;">${c}</td><td>${fmt(line)}</td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('r-total').textContent = fmt(total);
+  }
+
+  document.querySelectorAll('input').forEach(el => el.addEventListener('input', render));
+
+  function resetForm() {
+    const d = {
+      'f-date':'2025/11/07 08:54','f-acc':'***4073',
+      'f-branch':'054 AVENUE CENTRAL','f-accname':'ELTONIA COMPANY LIMITED',
+      'f-depat':'054 AVENUE CENTRAL','f-term':'03','f-teller':'AB034RT',
+      'f-depby':'HARRIET AMA-ADJIBEA AYIM','f-contact':'0556513376',
+      'f-batch':'20251107-054-03-000003','f-curr':'New Cedi',
+      'f-narr':'AACEN','f-xnarr':'',
+      'd1-v':200,'d1-c':1,'d2-v':100,'d2-c':5,
+      'd3-v':50,'d3-c':49,'d4-v':20,'d4-c':1,'d5-v':10,'d5-c':-1
+    };
+    Object.entries(d).forEach(([id,v]) => { document.getElementById(id).value = v; });
+    render();
+  }
+
+  render();
+
+  /* ---- Signature Pad ---- */
+  const canvas = document.getElementById('sigCanvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  let hasStrokes = false;
+
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const imgData = hasStrokes ? canvas.toDataURL() : null;
+    canvas.width = rect.width * dpr;
+    canvas.height = 110 * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (imgData) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, rect.width, 110);
+      img.src = imgData;
+    }
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    document.getElementById('sigHint').style.display = 'none';
+  }
+  function draw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    hasStrokes = true;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+  function endDraw() { drawing = false; }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', draw, { passive: false });
+  canvas.addEventListener('touchend', endDraw);
+
+  function clearSig() {
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    hasStrokes = false;
+    document.getElementById('sigHint').style.display = '';
+    document.getElementById('sigDisplay').style.display = 'none';
+    document.getElementById('sigImg').src = '';
+  }
+  function applySig() {
+    if (!hasStrokes) return alert('Please draw your signature first.');
+    document.getElementById('sigImg').src = canvas.toDataURL('image/png');
+    document.getElementById('sigDisplay').style.display = 'flex';
+  }
+</script>
+</body>
+</html>
